@@ -265,7 +265,7 @@ if submitted:
             gap: 10px;
             margin-top: 1rem;
         ">
-            ✅ Submitted! Your entry has been recorded with <b>Status = Processing</b>.
+            ✅ Submitted! Your entry has been recorded
         </div>
         """,
             unsafe_allow_html=True,
