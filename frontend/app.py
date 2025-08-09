@@ -74,7 +74,6 @@ div[data-testid="stFormSubmitButton"] {
 }
 div[data-testid="stFormSubmitButton"] button {
     width: 100% !important;
-    max-width: 1000px;
     border-radius: 12px;
     padding: 0.9rem 1rem;
     font-weight: 700;
@@ -206,7 +205,11 @@ with st.form("intake_form"):
         )
 
     # Always enabled submit button
-    submitted = st.form_submit_button("🚀 Submit")
+    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)  # Spacer
+
+    submit_col = st.columns([1, 6, 1])  # Left spacer, button, right spacer
+    with submit_col[1]:
+        submitted = st.form_submit_button("🚀 Submit")
 
 # ---------------------------- SUBMIT HANDLER ----------------------------
 if submitted:
