@@ -6,13 +6,10 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
-from config import GOOGLE_SA_FILE, SCOPES
+from config.config import GOOGLE_SA_FILE, SCOPES
 
 
 def get_drive_service():
-    """
-    Build and return an authenticated Google Drive service client.
-    """
     if not GOOGLE_SA_FILE:
         raise ValueError("❌ GOOGLE_SA_FILE not set in .env")
     creds = Credentials.from_service_account_file(
@@ -22,12 +19,6 @@ def get_drive_service():
 
 
 def download_audio_from_drive(file_id: str) -> str:
-    """
-    Download a Drive file by ID into a temporary local .m4a file.
-
-    Returns:
-        Path to the downloaded temporary file.
-    """
     service = get_drive_service()
     request = service.files().get_media(fileId=file_id)
 
@@ -43,19 +34,10 @@ def download_audio_from_drive(file_id: str) -> str:
     return temp_file.name
 
 
-def upload_file_to_drive_in_memory(
-    file_data: io.BytesIO | bytes, folder_id: str, final_name: str = "Summary.docx"
-) -> str:
-    """
-    Upload a DOCX (provided as BytesIO or bytes) to a Drive folder.
-
-    Returns:
-        The uploaded file's Drive ID.
-    """
+def upload_file_to_drive_in_memory(file_data: io.BytesIO | bytes, folder_id: str, final_name: str = "Summary.docx") -> str:
     service = get_drive_service()
     file_metadata = {"name": final_name, "parents": [folder_id]}
 
-    # Accept either bytes or BytesIO
     if isinstance(file_data, bytes):
         file_stream = io.BytesIO(file_data)
     elif isinstance(file_data, io.BytesIO):
@@ -86,12 +68,6 @@ def upload_file_to_drive_in_memory(
 
 
 def find_audio_file_in_folder(folder_id: str, extension: str = ".m4a") -> Optional[str]:
-    """
-    Search the given Drive folder for the first file ending with the provided extension.
-
-    Returns:
-        The file ID if found, else None.
-    """
     service = get_drive_service()
     results = (
         service.files()

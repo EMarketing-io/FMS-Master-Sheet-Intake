@@ -11,7 +11,7 @@ def generate_website_docx(summary_json, company_name: str, meeting_date) -> io.B
     doc = Document()
     doc.add_heading(f"{company_name} Website Summary", level=0)
     p = doc.add_paragraph(f"Date: {meeting_date}")
-    p.alignment = 2  # right
+    p.alignment = 2 
 
     for section in (summary_json.get("sections") or []):
         heading = (section.get("heading") or "").strip()

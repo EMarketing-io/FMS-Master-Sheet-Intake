@@ -8,13 +8,9 @@ from config.config import GOOGLE_SA_FILE, GOOGLE_DRIVE_SCOPES, WEBSITE_DRIVE_FOL
 def authenticate_google_drive():
     if not GOOGLE_SA_FILE:
         raise ValueError("⚠️ GOOGLE_SA_FILE not set in .env")
-    creds = Credentials.from_service_account_file(
-        GOOGLE_SA_FILE, scopes=GOOGLE_DRIVE_SCOPES
-    )
+    creds = Credentials.from_service_account_file(GOOGLE_SA_FILE, scopes=GOOGLE_DRIVE_SCOPES)
     return build("drive", "v3", credentials=creds)
 
-
-# 📤 Upload a DOCX file from memory to Google Drive (as a Google Doc)
 def upload_docx_to_gdrive(docx_stream, filename):
     service = authenticate_google_drive()
 

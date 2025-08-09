@@ -5,12 +5,10 @@ from typing import Optional
 import openai
 from config.config import OPENAI_KEY, OPENAI_MODEL
 
-# Configure once
 openai.api_key = OPENAI_KEY
 
 
 def _extract_balanced_json(text: str) -> Optional[str]:
-    """Find the first balanced {...} block via brace counting."""
     start = text.find("{")
     if start == -1:
         return None
@@ -32,22 +30,19 @@ def _try_json_loads(s: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    # If available, try json_repair
     try:
-        from json_repair import repair_json  # optional dependency
+        from json_repair import repair_json
 
         repaired = repair_json(s)
         return json.loads(repaired)
     except Exception:
         pass
 
-    # Remove trailing commas before ] or }
     s2 = re.sub(r",(\s*[\]\}])", r"\1", s)
 
-    # Escape unescaped double quotes inside values after a colon
     def _escape_inner_quotes(m: re.Match) -> str:
-        prefix = m.group(1)  # includes :"
-        body = m.group(2)  # string body
+        prefix = m.group(1)
+        body = m.group(2)
         body = re.sub(r'(?<!\\)"', r'\\"', body)
         return prefix + body + '"'
 
@@ -56,7 +51,6 @@ def _try_json_loads(s: str) -> dict:
     return json.loads(s3)
 
 
-# 📊 Summarizes raw website content into a structured JSON using OpenAI GPT
 def summarize_with_openai(webpage_text: str) -> dict:
     prompt = f"""
 You are a professional business analyst. Analyze the following website content and return **ONLY valid JSON**.
@@ -66,7 +60,7 @@ CRITICAL JSON RULES:
 - If you need to include quotes **inside** any string value, you **must escape** them as `\"`.
 - Do **not** include backticks, code fences, markdown, or commentary — just the JSON object.
 - Bold important keywords in content using `**bold**` (plain text inside JSON strings).
-- Each "content" field must contain 4–6 bullet lines joined with `\\n`.
+- Each "content" field must contain 6–8 bullet lines joined with `\\n`.
 
 Use this exact schema:
 {{

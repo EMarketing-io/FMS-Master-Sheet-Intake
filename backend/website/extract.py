@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 
 
-# 🌐 Extracts clean, readable text content from a web page (URL)
 def extract_text_from_url(url):
     response = requests.get(url)
     response.raise_for_status()

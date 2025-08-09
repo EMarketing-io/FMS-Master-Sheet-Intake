@@ -6,9 +6,6 @@ from pydub import AudioSegment
 
 
 def extract_json_block(text: str):
-    """
-    Find the first {...} block in text and parse it as JSON.
-    """
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
         try:
@@ -27,20 +24,7 @@ def split_audio_file(
     max_size_bytes: int = 25 * 1024 * 1024,
     fixed_chunk_ms: int = 15 * 60 * 1000,
 ) -> List[str]:
-    """
-    Split the audio into fixed 15-minute chunks only if file size > max_size_bytes.
-    Otherwise, return the single original file path.
-
-    Args:
-        audio_path: Path to the original audio file.
-        max_size_bytes: Max size before splitting.
-        fixed_chunk_ms: Chunk length in ms (default 15 minutes).
-
-    Returns:
-        List of audio file paths (original or chunk files).
-    """
     if os.path.getsize(audio_path) <= max_size_bytes:
-        # No splitting required
         return [audio_path]
 
     audio = AudioSegment.from_file(audio_path)
@@ -54,7 +38,5 @@ def split_audio_file(
         chunk.export(chunk_path, format="mp4")
         chunks.append(chunk_path)
 
-    print(
-        f"🔪 Split {audio_path} into {len(chunks)} chunks of {fixed_chunk_ms // 1000} seconds each."
-    )
+    print(f"🔪 Split {audio_path} into {len(chunks)} chunks of {fixed_chunk_ms // 1000} seconds each.")
     return chunks
