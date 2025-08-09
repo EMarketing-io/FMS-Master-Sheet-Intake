@@ -67,19 +67,28 @@ label {font-weight: 700 !important; margin-bottom: .2rem !important;}
     border-color: #1fddff !important;
     background: rgba(31,221,255,0.05);
 }
+/* Submit button full width & centered */
+div[data-testid="stFormSubmitButton"] {
+    display: flex;
+    justify-content: center;
+}
 div[data-testid="stFormSubmitButton"] button {
-    width: 100%;
+    width: 100% !important;
+    max-width: 1000px;
     border-radius: 12px;
-    padding: .9rem 1rem;
+    padding: 0.9rem 1rem;
     font-weight: 700;
     font-size: 1rem;
-    letter-spacing: .02em;
+    letter-spacing: 0.02em;
     border: none;
     background: linear-gradient(45deg, #ff4b1f, #ff9068);
     color: white;
-    transition: all .2s ease-in-out;
+    transition: all 0.2s ease-in-out;
 }
-div[data-testid="stFormSubmitButton"] button:hover {filter: brightness(1.05); transform: translateY(-1px);}
+div[data-testid="stFormSubmitButton"] button:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+}
 </style>
 """,
     unsafe_allow_html=True,
