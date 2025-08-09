@@ -1,4 +1,3 @@
-# --- make project root importable so `config.py` at the root is found ---
 import sys, os, io, ssl, time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -9,8 +8,6 @@ from pytz import timezone
 from ssl import SSLEOFError
 from googleapiclient.http import MediaIoBaseUpload
 from googleapiclient.errors import HttpError
-
-# imports from your root-level config.py
 from config.config import (
     sheet,
     dropdown_sheet,
@@ -18,8 +15,6 @@ from config.config import (
     KICKSTART_FOLDER_ID,
     drive_service,
 )
-
-# local utils
 from utils.sheet_client import (
     get_client_list,
     get_employee_email_map,
@@ -27,13 +22,7 @@ from utils.sheet_client import (
 )
 from utils.validators import is_valid_url
 
-
-# ---------------------------- PAGE CONFIG ----------------------------
-st.set_page_config(
-    page_title="FMS Master Sheet - Intake", page_icon="📝", layout="wide"
-)
-
-# ---------------------------- STYLES ----------------------------
+st.set_page_config(page_title="FMS Master Sheet - Intake", page_icon="📝", layout="wide")
 st.markdown(
     """
 <style>
@@ -89,7 +78,6 @@ div[data-testid="stFormSubmitButton"] button:hover {
     unsafe_allow_html=True,
 )
 
-# ---------------------------- HEADER ----------------------------
 st.markdown(
     """
 <div class="fms-header">
@@ -100,32 +88,23 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-# ---------------------------- DATA LOAD ----------------------------
 try:
     clients = get_client_list(dropdown_sheet)
     employee_email = get_employee_email_map(dropdown_sheet)
+
 except Exception as e:
     st.error(f"Failed to load dropdowns from Google Sheet: {e}")
     st.stop()
 
-
-# Email autofill
 def _on_change_submitted_by():
     name = st.session_state.get("submitted_by", "")
     st.session_state["email_id"] = employee_email.get(name, "")
 
-
 if "submitted_by" not in st.session_state:
-    st.session_state["submitted_by"] = (
-        list(employee_email.keys())[0] if employee_email else ""
-    )
+    st.session_state["submitted_by"] = (list(employee_email.keys())[0] if employee_email else "")
 if "email_id" not in st.session_state:
-    st.session_state["email_id"] = employee_email.get(
-        st.session_state["submitted_by"], ""
-    )
+    st.session_state["email_id"] = employee_email.get(st.session_state["submitted_by"], "")
 
-# OUTSIDE form so it updates instantly
 st.selectbox(
     "👤 Submitted By",
     options=list(employee_email.keys()) or ["—"],
@@ -134,16 +113,11 @@ st.selectbox(
 )
 st.text_input("✉️ Email ID", key="email_id", disabled=True)
 
-
-# ---------------------------- Upload with progress ----------------------------
-def robust_upload_to_drive_with_progress(
-    data: bytes, filename: str, parent_folder_id: str
-) -> str:
-    """Upload file to Google Drive with progress bar & retries."""
+def robust_upload_to_drive_with_progress(data: bytes, filename: str, parent_folder_id: str) -> str:
     stream = io.BytesIO(data)
     stream.seek(0)
-
     file_metadata = {"name": filename, "parents": [parent_folder_id]}
+    
     media = MediaIoBaseUpload(
         stream,
         mimetype="application/octet-stream",
@@ -153,6 +127,7 @@ def robust_upload_to_drive_with_progress(
 
     progress = st.progress(0, text="Starting upload...")
     retries = 5
+    
     for attempt in range(1, retries + 1):
         try:
             request = drive_service.files().create(
@@ -161,7 +136,9 @@ def robust_upload_to_drive_with_progress(
                 fields="id",
                 supportsAllDrives=True,
             )
+            
             response = None
+            
             while response is None:
                 status, response = request.next_chunk()
                 if status:
@@ -169,6 +146,7 @@ def robust_upload_to_drive_with_progress(
                     progress.progress(percent, text=f"Uploading... {percent}%")
             progress.progress(100, text="Upload complete ✅")
             return response["id"]
+        
         except (HttpError, SSLEOFError, ssl.SSLError, ConnectionError) as e:
             if attempt < retries:
                 wait = 2**attempt
@@ -178,32 +156,24 @@ def robust_upload_to_drive_with_progress(
                 continue
             raise RuntimeError(f"❌ Upload failed after {retries} attempts: {e}")
 
-
-# ---------------------------- FORM ----------------------------
 with st.form("intake_form"):
     col1, col2 = st.columns([1, 1])
 
     with col1:
         ist_today = dt.datetime.now(timezone("Asia/Kolkata")).date()
         meeting_date = st.date_input("🗓️ Meeting Date", max_value=ist_today)
-        client_name = st.selectbox(
-            "🏷️ Client Name", options=clients or ["—"], index=0 if clients else 0
-        )
+        client_name = st.selectbox("🏷️ Client Name", options=clients or ["—"], index=0 if clients else 0)
         meeting_type = st.selectbox("📌 Meeting Type", options=["Regular", "Kickstart"])
 
     with col2:
-        website_link = st.text_input(
-            "🌐 Website Link", placeholder="https://example.com"
-        )
+        website_link = st.text_input("🌐 Website Link", placeholder="https://example.com")
         audio_file = st.file_uploader(
             "🎙️ Meeting Audio Link (required · .m4a/.mp3/.wav)",
             type=["m4a", "mp3", "wav"],
         )
 
-    # Wide full-width submit button
     submitted = st.form_submit_button("🚀 Submit", use_container_width=True)
 
-# ---------------------------- SUBMIT HANDLER ----------------------------
 if submitted:
     if audio_file is None:
         st.error("🎧 Please upload the meeting audio file before submitting.")
@@ -218,22 +188,22 @@ if submitted:
     meeting_date_str = meeting_date.strftime("%d-%m-%Y")
 
     try:
-        # Upload audio with progress
         file_bytes = audio_file.read()
         ext = audio_file.name.split(".")[-1]
         safe_client_name = client_name.replace("/", "-").replace("\\", "-").strip()
         filename = f"{safe_client_name}_{meeting_date_str}.{ext}"
+        
         parent_folder = (
             REGULAR_FOLDER_ID
             if meeting_type.lower() == "regular"
             else KICKSTART_FOLDER_ID
         )
+        
         file_id = robust_upload_to_drive_with_progress(
             file_bytes, filename, parent_folder
         )
         meeting_audio_link = f"https://drive.google.com/file/d/{file_id}/view"
-
-        # Build sheet row
+        
         row = [
             timestamp,
             meeting_date_str,
@@ -251,7 +221,6 @@ if submitted:
         ]
         append_main_row_in_order(sheet, row)
 
-        # ---------------- SUCCESS UI ----------------
         st.markdown(
             """
         <div style="
