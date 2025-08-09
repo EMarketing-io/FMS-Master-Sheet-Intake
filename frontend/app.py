@@ -67,11 +67,7 @@ label {font-weight: 700 !important; margin-bottom: .2rem !important;}
     border-color: #1fddff !important;
     background: rgba(31,221,255,0.05);
 }
-/* Submit button full width & centered */
-div[data-testid="stFormSubmitButton"] {
-    display: flex;
-    justify-content: center;
-}
+/* Full-width submit button */
 div[data-testid="stFormSubmitButton"] button {
     width: 100% !important;
     border-radius: 12px;
@@ -204,12 +200,8 @@ with st.form("intake_form"):
             type=["m4a", "mp3", "wav"],
         )
 
-    # Always enabled submit button
-    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)  # Spacer
-
-    submit_col = st.columns([1, 6, 1])  # Left spacer, button, right spacer
-    with submit_col[1]:
-        submitted = st.form_submit_button("🚀 Submit")
+    # Wide full-width submit button
+    submitted = st.form_submit_button("🚀 Submit", use_container_width=True)
 
 # ---------------------------- SUBMIT HANDLER ----------------------------
 if submitted:
