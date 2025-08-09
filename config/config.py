@@ -4,15 +4,15 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 
+RUNNING_IN_STREAMLIT_CLOUD = False
 try:
     import streamlit as st
-    RUNNING_IN_STREAMLIT_CLOUD = True
-
+    if os.getenv("STREAMLIT_RUNTIME", "") and "OPENAI_KEY" in st.secrets:
+        RUNNING_IN_STREAMLIT_CLOUD = True
 except ImportError:
     st = None
-    RUNNING_IN_STREAMLIT_CLOUD = False
 
-if RUNNING_IN_STREAMLIT_CLOUD and st.secrets:
+if RUNNING_IN_STREAMLIT_CLOUD:
     OPENAI_KEY = st.secrets["OPENAI_KEY"]
     OPENAI_MODEL = st.secrets.get("OPENAI_MODEL", "gpt-5-2025-08-07")
     WHISPER_MODEL = st.secrets.get("WHISPER_MODEL", "whisper-1")
@@ -42,7 +42,6 @@ else:
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-2025-08-07")
     WHISPER_MODEL = os.getenv("WHISPER_MODEL", "whisper-1")
     GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "")
-
     REGULAR_FOLDER_ID = os.getenv("REGULAR_FOLDER_ID", "")
     KICKSTART_FOLDER_ID = os.getenv("KICKSTART_FOLDER_ID", "")
     AUDIO_DRIVE_FOLDER_ID = os.getenv("AUDIO_DRIVE_FOLDER_ID", "")

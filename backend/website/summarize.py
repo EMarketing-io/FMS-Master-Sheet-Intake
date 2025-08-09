@@ -3,7 +3,7 @@ import re
 from typing import Optional
 
 import openai
-from config import OPENAI_KEY, OPENAI_MODEL
+from config.config import OPENAI_KEY, OPENAI_MODEL
 
 # Configure once
 openai.api_key = OPENAI_KEY
@@ -27,7 +27,6 @@ def _extract_balanced_json(text: str) -> Optional[str]:
 
 
 def _try_json_loads(s: str) -> dict:
-    """Parse JSON with fallbacks to repair common model mistakes."""
     try:
         return json.loads(s)
     except json.JSONDecodeError:
@@ -59,11 +58,6 @@ def _try_json_loads(s: str) -> dict:
 
 # 📊 Summarizes raw website content into a structured JSON using OpenAI GPT
 def summarize_with_openai(webpage_text: str) -> dict:
-    """
-    Return structured JSON for a website page.
-    - Enforces escaping of inner quotes in the prompt.
-    - Uses robust extraction/repair; flow and schema unchanged.
-    """
     prompt = f"""
 You are a professional business analyst. Analyze the following website content and return **ONLY valid JSON**.
 

@@ -1,16 +1,11 @@
 import openai
-from config import OPENAI_KEY, OPENAI_MODEL
+from config.config import OPENAI_KEY, OPENAI_MODEL
 from audio.utils import extract_json_block
 
-# Configure API key once here
 openai.api_key = OPENAI_KEY
 
 
 def generate_summary(transcript_text: str):
-    """
-    Send transcript to GPT and return the parsed JSON summary using extract_json_block.
-    (Flow and output schema unchanged.)
-    """
     system_prompt = """
 You are an expert business analyst. You will be given a raw transcript from a client-agency meeting.
 

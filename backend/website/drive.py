@@ -2,7 +2,7 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaInMemoryUpload
 
-from config import GOOGLE_SA_FILE, GOOGLE_DRIVE_SCOPES, WEBSITE_DRIVE_FOLDER_ID
+from config.config import GOOGLE_SA_FILE, GOOGLE_DRIVE_SCOPES, WEBSITE_DRIVE_FOLDER_ID
 
 
 def authenticate_google_drive():

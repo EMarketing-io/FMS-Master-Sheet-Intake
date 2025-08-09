@@ -1,41 +1,44 @@
 from docx import Document
+from datetime import date
 import io
 import re
 
 
-# 📝 Converts a structured summary JSON into a formatted in-memory DOCX file
-def create_docx_in_memory(summary_json, document_title):
+def generate_website_docx(summary_json, company_name: str, meeting_date) -> io.BytesIO:
+    if isinstance(meeting_date, date):
+        meeting_date = meeting_date.strftime("%d-%m-%Y")
+
     doc = Document()
-    doc.add_heading(document_title, level=0)
+    doc.add_heading(f"{company_name} Website Summary", level=0)
+    p = doc.add_paragraph(f"Date: {meeting_date}")
+    p.alignment = 2  # right
 
-    for section in summary_json.get("sections", []):
-        doc.add_heading(section["heading"], level=1)
+    for section in (summary_json.get("sections") or []):
+        heading = (section.get("heading") or "").strip()
+        content = (section.get("content") or "").strip()
+        if heading:
+            doc.add_heading(heading, level=1)
 
-        # Split section content by line (newline-separated bullet points)
-        for line in section["content"].split("\n"):
-            line = line.strip()
-            if not line:
-                continue
+        if content:
+            for line in content.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith("- "):
+                    line = line[2:].strip()
+                    para = doc.add_paragraph(style="List Bullet")
+                    parts = re.split(r"(\*\*.*?\*\*)", line)
+                    for part in parts:
+                        run = para.add_run()
+                        if part.startswith("**") and part.endswith("**"):
+                            run.text = part[2:-2]
+                            run.bold = True
+                        else:
+                            run.text = part
+                else:
+                    doc.add_paragraph(line)
 
-            # Bullet lines start with "- "
-            if line.startswith("- "):
-                line = line[2:].strip()
-                para = doc.add_paragraph(style="List Bullet")
-                parts = re.split(r"(\*\*.*?\*\*)", line)
-
-                # Apply bold for **bold** spans
-                for part in parts:
-                    run = para.add_run()
-                    if part.startswith("**") and part.endswith("**"):
-                        run.text = part[2:-2]
-                        run.bold = True
-                    else:
-                        run.text = part
-            else:
-                doc.add_paragraph(line)
-
-    # Save to in-memory stream
-    doc_stream = io.BytesIO()
-    doc.save(doc_stream)
-    doc_stream.seek(0)
-    return doc_stream
+    out = io.BytesIO()
+    doc.save(out)
+    out.seek(0)
+    return out
