@@ -1,0 +1,33 @@
+# Frontend dependencies for FMS Master Sheet
+
+# UI Framework
+streamlit>=1.32.0
+
+# Timezone handling
+pytz
+
+# Environment variables
+python-dotenv
+
+# Google Sheets & Drive
+gspread
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+
+# Web scraping (used in website pipeline, harmless here)
+requests
+beautifulsoup4
+
+# Document generation
+python-docx
+
+# OpenAI API
+openai
+
+# Audio processing (mainly backend, harmless here)
+pydub
+
+# JSON repair utility
+json-repair
