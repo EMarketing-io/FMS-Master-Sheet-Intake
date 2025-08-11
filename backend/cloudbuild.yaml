@@ -1,0 +1,52 @@
+# cloudbuild.yaml -- builds backend image and pushes to Artifact Registry
+
+# ---- tweak these 3 substitutions to your setup ----
+substitutions:
+  _REGION: us-central1                   # Artifact Registry region
+  _REPOSITORY: fms-zoom-summariser       # Artifact Registry repo name
+  _IMAGE: fms-backend                    # image name you’ll use in Cloud Run Job
+
+options:
+  logging: CLOUD_LOGGING_ONLY            # <— fixes the “build.service_account ... logging” error
+  # You may also use the regional user-owned bucket behavior instead:
+  # defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+
+steps:
+  # Build
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-f", "backend/Dockerfile",
+        "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$SHORT_SHA",
+        ".",
+      ]
+
+  # Push SHA tag
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$SHORT_SHA",
+      ]
+
+  # Tag as latest
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "tag",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$SHORT_SHA",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest",
+      ]
+
+  # Push latest
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest",
+      ]
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest"

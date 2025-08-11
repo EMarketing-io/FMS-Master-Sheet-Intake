@@ -11,12 +11,14 @@ spec:
         annotations:
           run.googleapis.com/execution-environment: gen2
       spec:
+        # Runtime service account (NOT the Cloud Build one)
+        serviceAccountName: fms-job-runner@summarizer-466905.iam.gserviceaccount.com
         taskCount: 1
         parallelism: 1
         template:
           spec:
             containers:
-              - image: gcr.io/PROJECT_ID/fms-backend:latest # <-- replace PROJECT_ID
+              - image: us-central1-docker.pkg.dev/summarizer-466905/fms-zoom-summariser/fms-backend:latest
                 env:
                   # --- Non-secret config (IDs) ---
                   - name: GOOGLE_SHEET_ID
@@ -34,10 +36,10 @@ spec:
                   - name: ACTION_POINT_FOLDER_ID
                     value: "..."
                   - name: OPENAI_MODEL
-                    value: "gpt-3.5-turbo" # or your current choice
+                    value: "gpt-3.5-turbo"
                   - name: WHISPER_MODEL
                     value: "whisper-1"
-                  # --- Secrets from Secret Manager ---
+                  # --- Secrets (Secret Manager) ---
                   - name: OPENAI_KEY
                     valueSource:
                       secretKeyRef:
@@ -48,5 +50,11 @@ spec:
                       secretKeyRef:
                         secret: "GOOGLE_SA_JSON"
                         version: "latest"
+                resources:
+                  limits:
+                    cpu: "1"
+                    memory: "2Gi"
             restartPolicy: Never
         maxRetries: 1
+        # Optional: job timeout (default 3600s)
+        # timeoutSeconds: 3600
