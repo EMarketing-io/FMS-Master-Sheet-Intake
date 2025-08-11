@@ -1,44 +1,41 @@
-import sys, os, time
+import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.config import sheet
 from backend.processor import process_row
+import time
 
-CHECK_INTERVAL = 10
 
 
-def find_processing_rows(sheet_obj):
-    all_values = sheet_obj.get_all_values()
-    if not all_values:
-        return []
-
-    header = all_values[0]
-    status_idx = header.index("Status")
-    processing_rows = []
-
-    for i, row in enumerate(all_values[1:], start=2): 
-        if len(row) > status_idx:
-            status_val = row[status_idx].strip().lower()
-            if status_val == "processing":
-                processing_rows.append((i, row))
-
-    return processing_rows
+def get_processing_rows():
+    all_values = sheet.get_all_records()
+    rows = []
+    for idx, row in enumerate(all_values, start=2):
+        if row.get("Status", "").strip().lower() == "processing":
+            rows.append((idx, row))
+    return rows
 
 
 if __name__ == "__main__":
     while True:
-        rows_to_process = find_processing_rows(sheet)
+        rows = get_processing_rows()
+        if not rows:
+            print("✅ No rows with Status = 'Processing'. Processes Ended.")
+            break  # Exit script
 
-        if rows_to_process:
-            print(f"🔍 Found {len(rows_to_process)} row(s) with Status = 'Processing'")
-            for row_idx, row_data in rows_to_process:
-                try:
-                    process_row(row_idx, row_data)
-                except Exception as e:
-                    print(f"❌ Error processing row {row_idx}: {e}")
-        
-        else:
-            print("✅ No rows with Status = 'Processing' found.")
+        print(f"🔍 Found {len(rows)} row(s) with Status = 'Processing'")
+        for idx, row_data in rows:
+            try:
+                process_row(idx, list(row_data.values()))
+            except Exception as e:
+                print(f"❌ Error processing row {idx}: {e}")
+                # optional: update status to "Error" here
 
-        print(f"⏳ Waiting {CHECK_INTERVAL} seconds before checking again...\n")
-        time.sleep(CHECK_INTERVAL)
+        # After processing current batch, check again before deciding to sleep
+        rows_left = get_processing_rows()
+        if not rows_left:
+            print("✅ All rows processed. Stopping backend.")
+            break
+
+        print("⏳ Waiting 10 seconds before checking again...")
+        time.sleep(10)
