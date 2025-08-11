@@ -84,7 +84,7 @@ div[data-testid="stFormSubmitButton"] button:hover {
 st.markdown(
     """
 <div class="fms-header">
-  <h1>🗂️ FMS Master Sheet — Intake</h1>
+  <h1>🗂️ Zoom Meeting Summariser</h1>
   <div class="fms-subtitle">Submit website/audio & metadata — we’ll handle the rest 🚀</div>
 </div>
 """,
