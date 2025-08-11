@@ -1,0 +1,52 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: fms-processor
+  annotations:
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    template:
+      metadata:
+        annotations:
+          run.googleapis.com/execution-environment: gen2
+      spec:
+        taskCount: 1
+        parallelism: 1
+        template:
+          spec:
+            containers:
+              - image: gcr.io/PROJECT_ID/fms-backend:latest # <-- replace PROJECT_ID
+                env:
+                  # --- Non-secret config (IDs) ---
+                  - name: GOOGLE_SHEET_ID
+                    value: "YOUR_SHEET_ID"
+                  - name: REGULAR_FOLDER_ID
+                    value: "..."
+                  - name: KICKSTART_FOLDER_ID
+                    value: "..."
+                  - name: AUDIO_DRIVE_FOLDER_ID
+                    value: "..."
+                  - name: WEBSITE_DRIVE_FOLDER_ID
+                    value: "..."
+                  - name: MOM_FOLDER_ID
+                    value: "..."
+                  - name: ACTION_POINT_FOLDER_ID
+                    value: "..."
+                  - name: OPENAI_MODEL
+                    value: "gpt-3.5-turbo" # or your current choice
+                  - name: WHISPER_MODEL
+                    value: "whisper-1"
+                  # --- Secrets from Secret Manager ---
+                  - name: OPENAI_KEY
+                    valueSource:
+                      secretKeyRef:
+                        secret: "OPENAI_KEY"
+                        version: "latest"
+                  - name: GOOGLE_SA_JSON
+                    valueSource:
+                      secretKeyRef:
+                        secret: "GOOGLE_SA_JSON"
+                        version: "latest"
+            restartPolicy: Never
+        maxRetries: 1

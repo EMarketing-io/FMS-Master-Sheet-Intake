@@ -1,29 +1,31 @@
-# --- Core runtime ---
-python-dotenv==1.0.1
-pytz==2024.1
-requests==2.32.3
-beautifulsoup4==4.12.3
-
-# --- Streamlit frontend ---
+# --- UI Framework ---
 streamlit==1.36.0
 
-# --- Google APIs (Sheets & Drive) ---
+# --- Timezone handling ---
+pytz==2024.1
+
+# --- Environment variables ---
+python-dotenv==1.0.1
+
+# --- Google Sheets & Drive ---
 gspread==6.1.2
 google-api-python-client==2.147.0
 google-auth==2.34.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
 
-# --- Documents ---
+# --- Web scraping (used by backend; harmless here if you ever run backend logic in Streamlit) ---
+requests==2.32.3
+beautifulsoup4==4.12.3
+
+# --- Document generation ---
 python-docx==1.1.2
 
-# --- Audio ---
-pydub==0.25.1
-# NOTE: ffmpeg is required at OS level (see README)
-
-# --- OpenAI (legacy) ---
-# Your code uses the legacy ChatCompletion/Audio APIs
+# --- OpenAI API (used if you want to test backend summarization from UI) ---
 openai==0.28.1
 
-# --- Utilities ---
+# --- Audio processing (for small validations; actual processing is backend) ---
+pydub==0.25.1
+
+# --- JSON repair utility ---
 json-repair==0.16.1
