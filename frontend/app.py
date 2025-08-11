@@ -1,3 +1,4 @@
+# app.py
 import sys, os, io, ssl, time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -22,7 +23,9 @@ from utils.sheet_client import (
 )
 from utils.validators import is_valid_url
 
-st.set_page_config(page_title="FMS Master Sheet - Intake", page_icon="📝", layout="wide")
+st.set_page_config(
+    page_title="FMS Master Sheet - Intake", page_icon="📝", layout="wide"
+)
 st.markdown(
     """
 <style>
@@ -96,14 +99,20 @@ except Exception as e:
     st.error(f"Failed to load dropdowns from Google Sheet: {e}")
     st.stop()
 
+
 def _on_change_submitted_by():
     name = st.session_state.get("submitted_by", "")
     st.session_state["email_id"] = employee_email.get(name, "")
 
+
 if "submitted_by" not in st.session_state:
-    st.session_state["submitted_by"] = (list(employee_email.keys())[0] if employee_email else "")
+    st.session_state["submitted_by"] = (
+        list(employee_email.keys())[0] if employee_email else ""
+    )
 if "email_id" not in st.session_state:
-    st.session_state["email_id"] = employee_email.get(st.session_state["submitted_by"], "")
+    st.session_state["email_id"] = employee_email.get(
+        st.session_state["submitted_by"], ""
+    )
 
 st.selectbox(
     "👤 Submitted By",
@@ -113,11 +122,14 @@ st.selectbox(
 )
 st.text_input("✉️ Email ID", key="email_id", disabled=True)
 
-def robust_upload_to_drive_with_progress(data: bytes, filename: str, parent_folder_id: str) -> str:
+
+def robust_upload_to_drive_with_progress(
+    data: bytes, filename: str, parent_folder_id: str
+) -> str:
     stream = io.BytesIO(data)
     stream.seek(0)
     file_metadata = {"name": filename, "parents": [parent_folder_id]}
-    
+
     media = MediaIoBaseUpload(
         stream,
         mimetype="application/octet-stream",
@@ -125,9 +137,9 @@ def robust_upload_to_drive_with_progress(data: bytes, filename: str, parent_fold
         chunksize=5 * 1024 * 1024,
     )
 
-    progress = st.progress(0, text="Starting upload...")
+    progress = st.progress(0, text=f"Starting upload for {filename}...")
     retries = 5
-    
+
     for attempt in range(1, retries + 1):
         try:
             request = drive_service.files().create(
@@ -136,17 +148,18 @@ def robust_upload_to_drive_with_progress(data: bytes, filename: str, parent_fold
                 fields="id",
                 supportsAllDrives=True,
             )
-            
+
             response = None
-            
             while response is None:
                 status, response = request.next_chunk()
                 if status:
                     percent = int(status.progress() * 100)
-                    progress.progress(percent, text=f"Uploading... {percent}%")
-            progress.progress(100, text="Upload complete ✅")
+                    progress.progress(
+                        percent, text=f"Uploading {filename}... {percent}%"
+                    )
+            progress.progress(100, text=f"Upload complete ✅ ({filename})")
             return response["id"]
-        
+
         except (HttpError, SSLEOFError, ssl.SSLError, ConnectionError) as e:
             if attempt < retries:
                 wait = 2**attempt
@@ -156,27 +169,38 @@ def robust_upload_to_drive_with_progress(data: bytes, filename: str, parent_fold
                 continue
             raise RuntimeError(f"❌ Upload failed after {retries} attempts: {e}")
 
+
 with st.form("intake_form"):
     col1, col2 = st.columns([1, 1])
 
     with col1:
         ist_today = dt.datetime.now(timezone("Asia/Kolkata")).date()
         meeting_date = st.date_input("🗓️ Meeting Date", max_value=ist_today)
-        client_name = st.selectbox("🏷️ Client Name", options=clients or ["—"], index=0 if clients else 0)
+        client_name = st.selectbox(
+            "🏷️ Client Name", options=clients or ["—"], index=0 if clients else 0
+        )
         meeting_type = st.selectbox("📌 Meeting Type", options=["Regular", "Kickstart"])
 
     with col2:
-        website_link = st.text_input("🌐 Website Link", placeholder="https://example.com")
-        audio_file = st.file_uploader(
-            "🎙️ Meeting Audio Link (required · .m4a/.mp3/.wav)",
+        website_link = st.text_input(
+            "🌐 Website Link", placeholder="https://example.com"
+        )
+        audio_files = st.file_uploader(
+            "🎙️ Meeting Audio Files (1–4 · .m4a/.mp3/.wav)",
             type=["m4a", "mp3", "wav"],
+            accept_multiple_files=True,
         )
 
     submitted = st.form_submit_button("🚀 Submit", use_container_width=True)
 
 if submitted:
-    if audio_file is None:
-        st.error("🎧 Please upload the meeting audio file before submitting.")
+    if not audio_files or len(audio_files) == 0:
+        st.error("🎧 Please upload at least one meeting audio file before submitting.")
+        st.stop()
+
+    # Soft limit to avoid accidental huge batches; tweak as needed
+    if len(audio_files) > 4:
+        st.error("You can upload a maximum of 4 audio files at once.")
         st.stop()
 
     if website_link and not is_valid_url(website_link):
@@ -188,22 +212,30 @@ if submitted:
     meeting_date_str = meeting_date.strftime("%d-%m-%Y")
 
     try:
-        file_bytes = audio_file.read()
-        ext = audio_file.name.split(".")[-1]
-        safe_client_name = client_name.replace("/", "-").replace("\\", "-").strip()
-        filename = f"{safe_client_name}_{meeting_date_str}.{ext}"
-        
         parent_folder = (
             REGULAR_FOLDER_ID
             if meeting_type.lower() == "regular"
             else KICKSTART_FOLDER_ID
         )
-        
-        file_id = robust_upload_to_drive_with_progress(
-            file_bytes, filename, parent_folder
-        )
-        meeting_audio_link = f"https://drive.google.com/file/d/{file_id}/view"
-        
+
+        uploaded_links = []
+        for idx, f in enumerate(audio_files, start=1):
+            file_bytes = f.read()
+            # derive extension from each uploaded file
+            ext = f.name.split(".")[-1]
+            safe_client_name = client_name.replace("/", "-").replace("\\", "-").strip()
+            # Disambiguate filenames when multiple files are uploaded
+            suffix = f"_{idx}" if len(audio_files) > 1 else ""
+            filename = f"{safe_client_name}_{meeting_date_str}{suffix}.{ext}"
+
+            file_id = robust_upload_to_drive_with_progress(
+                file_bytes, filename, parent_folder
+            )
+            uploaded_links.append(f"https://drive.google.com/file/d/{file_id}/view")
+
+        # Build the comma-separated string wrapped in parentheses: (link, link)
+        meeting_audio_links_cell = f"({', '.join(uploaded_links)})"
+
         row = [
             timestamp,
             meeting_date_str,
@@ -211,7 +243,7 @@ if submitted:
             meeting_type,
             st.session_state["submitted_by"],
             st.session_state["email_id"],
-            meeting_audio_link,
+            meeting_audio_links_cell,  # <-- multiple links in parentheses
             website_link,
             "",
             "",
@@ -240,23 +272,27 @@ if submitted:
             unsafe_allow_html=True,
         )
 
+        # List out all uploaded audio links
         st.markdown(
-            f"""
-        <div style="
-            margin-top: 1.2rem;
-            padding: 12px 16px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-        ">
-            <span style="font-size: 0.95rem; font-weight: 600;">🎧 Audio uploaded:</span><br>
-            <a href="{meeting_audio_link}" target="_blank" style="color: #1fddff; text-decoration: none;">
-                {meeting_audio_link}
-            </a>
-        </div>
-        """,
+            "<div style='margin-top: 1.2rem;'>"
+            "<span style='font-size: 0.95rem; font-weight: 600;'>🎧 Audio uploaded:</span>",
             unsafe_allow_html=True,
         )
+        for link in uploaded_links:
+            st.markdown(
+                f"""<div style="
+                        margin-top: 0.5rem;
+                        padding: 12px 16px;
+                        border-radius: 10px;
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid rgba(255,255,255,0.1);
+                    ">
+                        <a href="{link}" target="_blank" style="color: #1fddff; text-decoration: none;">
+                            {link}
+                        </a>
+                    </div>""",
+                unsafe_allow_html=True,
+            )
 
         if website_link:
             st.markdown(

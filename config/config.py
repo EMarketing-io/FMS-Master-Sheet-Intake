@@ -7,6 +7,7 @@ from googleapiclient.discovery import build
 RUNNING_IN_STREAMLIT_CLOUD = False
 try:
     import streamlit as st
+
     if os.getenv("STREAMLIT_RUNTIME", "") and "OPENAI_KEY" in st.secrets:
         RUNNING_IN_STREAMLIT_CLOUD = True
 except ImportError:
@@ -38,6 +39,7 @@ if RUNNING_IN_STREAMLIT_CLOUD:
 else:
     # Local/dev: load from .env or system env
     from dotenv import load_dotenv
+
     load_dotenv()
 
     OPENAI_KEY = os.getenv("OPENAI_KEY", "")
