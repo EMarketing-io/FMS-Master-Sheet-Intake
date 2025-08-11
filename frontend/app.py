@@ -234,7 +234,7 @@ if submitted:
             uploaded_links.append(f"https://drive.google.com/file/d/{file_id}/view")
 
         # Build the comma-separated string wrapped in parentheses: (link, link)
-        meeting_audio_links_cell = f"({', '.join(uploaded_links)})"
+        meeting_audio_links_cell = f"{', '.join(uploaded_links)}"
 
         row = [
             timestamp,
