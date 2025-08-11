@@ -9,6 +9,7 @@ from config.config import (
     WEBSITE_DRIVE_FOLDER_ID,
     MOM_FOLDER_ID,
     ACTION_POINT_FOLDER_ID,
+    output_sheet,  # NEW
 )
 from backend.audio.transcription import transcribe_audio
 from backend.audio.summarizer import generate_summary
@@ -19,18 +20,17 @@ from backend.website.summarize import summarize_with_openai
 from backend.website.document import generate_website_docx
 
 from backend.drive_ops import upload_file_to_drive, download_file_from_drive_url
-from backend.sheet_ops import update_row_values
+from backend.sheet_ops import update_row_values, append_todos_to_output  # NEW
 
 _HTTP_LINK_RE = re.compile(r"https?://[^\s,]+", re.IGNORECASE)
-
 
 def _parse_audio_links(cell_value: str) -> List[str]:
     """
     Accepts:
       - 'https://.../d/IDa/view, https://.../d/IDb/view'
-      - '(https://... , https://...)' (legacy parentheses supported)
+      - '(https://... , https://...)' (legacy)
       - single link
-    Returns a list of cleaned URLs.
+    Returns a list of URLs.
     """
     if not cell_value:
         return []
@@ -42,12 +42,10 @@ def _parse_audio_links(cell_value: str) -> List[str]:
         links = [x.strip() for x in v.split(",") if x.strip()]
     return links
 
-
 def _save_stream_to_path(stream, path: str):
     stream.seek(0)
     with open(path, "wb") as f:
         f.write(stream.read())
-
 
 def _gs_hyperlink(url: str, text: str) -> str:
     if not url:
@@ -56,14 +54,15 @@ def _gs_hyperlink(url: str, text: str) -> str:
     safe_text = (text or "").replace('"', '""')
     return f'=HYPERLINK("{safe_url}","{safe_text}")'
 
-
 def process_row(row_idx: int, row_data: list):
     """
-    row_data is a list of values for the row; columns used:
+    row_data columns used:
       [1]=Meeting Date (dd-mm-YYYY), [2]=Client Name, [6]=Meeting Audio Link(s), [7]=Website Link
+
     Behavior:
       - If multiple audio links: download all, transcribe all, CONCAT transcripts, summarize ONCE.
       - Generate exactly ONE set of docs (Meeting Notes, MoM, Action Points).
+      - Push each To-Do from summary to Output sheet as a separate row.
     """
     meeting_date = row_data[1]
     client_name = row_data[2]
@@ -85,10 +84,9 @@ def process_row(row_idx: int, row_data: list):
             with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp_audio:
                 print(f"🎧 Downloading audio {i}/{len(audio_links)}...")
                 download_file_from_drive_url(link, tmp_audio.name)
-                # Transcribe; handles internal chunking if >25MB
                 print(f"📝 Transcribing audio {i}/{len(audio_links)}...")
                 transcript = transcribe_audio(tmp_audio.name)
-                combined_transcript += transcript.strip() + "\n\n"
+                combined_transcript += (transcript.strip() + "\n\n")
 
         # Summarize ONCE for the combined transcript
         print("🧠 Generating unified summary from combined transcript...")
@@ -97,19 +95,24 @@ def process_row(row_idx: int, row_data: list):
         base = f"{client_name}_{meeting_date}"
 
         # Full "Meeting Notes"
-        meeting_notes_stream = generate_docx(
-            meeting_summary, client_name, meeting_date, mode="full"
-        )
+        meeting_notes_stream = generate_docx(meeting_summary, client_name, meeting_date, mode="full")
         meeting_filename = f"{base}_Meeting Notes.docx"
         meeting_path = os.path.join(tempfile.gettempdir(), meeting_filename)
         _save_stream_to_path(meeting_notes_stream, meeting_path)
         meeting_url = upload_file_to_drive(meeting_path, AUDIO_DRIVE_FOLDER_ID)
         meeting_summary_cell = _gs_hyperlink(meeting_url, meeting_filename)
 
+        # ---- NEW: push To-Dos to Output sheet ----
+        try:
+            todos = (meeting_summary or {}).get("todo_list") or []
+            if isinstance(todos, list) and len(todos) > 0:
+                append_todos_to_output(output_sheet, todos, client_name, meeting_url)
+                print(f"🧾 Pushed {len(todos)} To-Do item(s) to Output sheet.")
+        except Exception as e:
+            print(f"⚠️ Failed to append To-Dos to Output sheet: {e}")
+
         # MoM Summary
-        mom_stream = generate_docx(
-            meeting_summary, client_name, meeting_date, mode="mom"
-        )
+        mom_stream = generate_docx(meeting_summary, client_name, meeting_date, mode="mom")
         mom_filename = f"{base}_MoM Summary.docx"
         mom_path = os.path.join(tempfile.gettempdir(), mom_filename)
         _save_stream_to_path(mom_stream, mom_path)
@@ -117,9 +120,7 @@ def process_row(row_idx: int, row_data: list):
         mom_summary_cell = _gs_hyperlink(mom_url, mom_filename)
 
         # Action Points Summary
-        action_stream = generate_docx(
-            meeting_summary, client_name, meeting_date, mode="action"
-        )
+        action_stream = generate_docx(meeting_summary, client_name, meeting_date, mode="action")
         action_filename = f"{base}_Action Points Summary.docx"
         action_path = os.path.join(tempfile.gettempdir(), action_filename)
         _save_stream_to_path(action_stream, action_path)
@@ -130,9 +131,7 @@ def process_row(row_idx: int, row_data: list):
     if website_link and str(website_link).strip():
         page_text = extract_text_from_url(website_link.strip())
         website_summary = summarize_with_openai(page_text)
-        website_stream = generate_website_docx(
-            website_summary, client_name, meeting_date
-        )
+        website_stream = generate_website_docx(website_summary, client_name, meeting_date)
         website_filename = f"{client_name}_{meeting_date}_Website Summary.docx"
         website_path = os.path.join(tempfile.gettempdir(), website_filename)
         _save_stream_to_path(website_stream, website_path)
@@ -141,7 +140,7 @@ def process_row(row_idx: int, row_data: list):
     else:
         website_summary_cell = "NA"
 
-    # Write back
+    # Write back to the Main sheet
     update_row_values(
         sheet,
         row_idx,
