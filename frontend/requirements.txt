@@ -1,33 +1,29 @@
-# Frontend dependencies for FMS Master Sheet
+# --- Core runtime ---
+python-dotenv==1.0.1
+pytz==2024.1
+requests==2.32.3
+beautifulsoup4==4.12.3
 
-# UI Framework
-streamlit>=1.32.0
+# --- Streamlit frontend ---
+streamlit==1.36.0
 
-# Timezone handling
-pytz
+# --- Google APIs (Sheets & Drive) ---
+gspread==6.1.2
+google-api-python-client==2.147.0
+google-auth==2.34.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
 
-# Environment variables
-python-dotenv
+# --- Documents ---
+python-docx==1.1.2
 
-# Google Sheets & Drive
-gspread
-google-api-python-client
-google-auth
-google-auth-httplib2
-google-auth-oauthlib
+# --- Audio ---
+pydub==0.25.1
+# NOTE: ffmpeg is required at OS level (see README)
 
-# Web scraping (used in website pipeline, harmless here)
-requests
-beautifulsoup4
+# --- OpenAI (legacy) ---
+# Your code uses the legacy ChatCompletion/Audio APIs
+openai==0.28.1
 
-# Document generation
-python-docx
-
-# OpenAI API
-openai
-
-# Audio processing (mainly backend, harmless here)
-pydub
-
-# JSON repair utility
-json-repair
+# --- Utilities ---
+json-repair==0.16.1
