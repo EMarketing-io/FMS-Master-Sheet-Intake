@@ -1,3 +1,4 @@
+# backend/processor.py
 import os
 import tempfile
 import re
@@ -9,7 +10,9 @@ from config.config import (
     WEBSITE_DRIVE_FOLDER_ID,
     MOM_FOLDER_ID,
     ACTION_POINT_FOLDER_ID,
-    output_sheet,  # NEW
+    output_sheet,      # Output sheet handle (can be None if not configured)
+    OUTPUT_SHEET_ID,   # For logging
+    OUTPUT_SHEET_TAB,  # For logging
 )
 from backend.audio.transcription import transcribe_audio
 from backend.audio.summarizer import generate_summary
@@ -20,9 +23,10 @@ from backend.website.summarize import summarize_with_openai
 from backend.website.document import generate_website_docx
 
 from backend.drive_ops import upload_file_to_drive, download_file_from_drive_url
-from backend.sheet_ops import update_row_values, append_todos_to_output  # NEW
+from backend.sheet_ops import update_row_values, append_todos_to_output
 
 _HTTP_LINK_RE = re.compile(r"https?://[^\s,]+", re.IGNORECASE)
+
 
 def _parse_audio_links(cell_value: str) -> List[str]:
     """
@@ -42,10 +46,12 @@ def _parse_audio_links(cell_value: str) -> List[str]:
         links = [x.strip() for x in v.split(",") if x.strip()]
     return links
 
+
 def _save_stream_to_path(stream, path: str):
     stream.seek(0)
     with open(path, "wb") as f:
         f.write(stream.read())
+
 
 def _gs_hyperlink(url: str, text: str) -> str:
     if not url:
@@ -54,22 +60,31 @@ def _gs_hyperlink(url: str, text: str) -> str:
     safe_text = (text or "").replace('"', '""')
     return f'=HYPERLINK("{safe_url}","{safe_text}")'
 
+
 def process_row(row_idx: int, row_data: list):
     """
-    row_data columns used:
-      [1]=Meeting Date (dd-mm-YYYY), [2]=Client Name, [6]=Meeting Audio Link(s), [7]=Website Link
+    row_data columns used (1-based sheet headers -> 0-based list):
+      [1]=Meeting Date (dd-mm-YYYY)
+      [2]=Client Name
+      [4]=Submitted By (Employee Name)
+      [5]=Email ID (Employee Email)
+      [6]=Meeting Audio Link(s)
+      [7]=Website Link
 
     Behavior:
       - If multiple audio links: download all, transcribe all, CONCAT transcripts, summarize ONCE.
       - Generate exactly ONE set of docs (Meeting Notes, MoM, Action Points).
-      - Push each To-Do from summary to Output sheet as a separate row.
+      - Push each To-Do from summary to Output sheet as a separate row (Timestamp, Task ID, Task Description,
+        Employee Name/Email, Client Name, Source Link). We do NOT touch the Output sheet's "Status" column.
     """
     meeting_date = row_data[1]
     client_name = row_data[2]
+    employee_name = row_data[4] if len(row_data) > 4 else ""
+    employee_email = row_data[5] if len(row_data) > 5 else ""
     meeting_audio_cell = row_data[6]
     website_link = row_data[7]
 
-    # Prepare output cells
+    # Prepare output cells for Main sheet
     meeting_summary_cell = ""
     mom_summary_cell = ""
     action_points_cell = ""
@@ -102,12 +117,26 @@ def process_row(row_idx: int, row_data: list):
         meeting_url = upload_file_to_drive(meeting_path, AUDIO_DRIVE_FOLDER_ID)
         meeting_summary_cell = _gs_hyperlink(meeting_url, meeting_filename)
 
-        # ---- NEW: push To-Dos to Output sheet ----
+        # ---- Push To-Dos to Output sheet (one row per item) ----
         try:
             todos = (meeting_summary or {}).get("todo_list") or []
-            if isinstance(todos, list) and len(todos) > 0:
-                append_todos_to_output(output_sheet, todos, client_name, meeting_url)
+            print(
+                f"🧪 OUTPUT_SHEET_ID={OUTPUT_SHEET_ID} tab={OUTPUT_SHEET_TAB} "
+                f"has_output_sheet={'yes' if output_sheet else 'no'} todos={len(todos)}"
+            )
+            if isinstance(todos, list) and len(todos) > 0 and output_sheet is not None:
+                meta = {
+                    "employee_name": employee_name,
+                    "employee_email": employee_email,
+                    "client_name": client_name,
+                    "source_link": meeting_url,  # goes to 'Source Link' column in Output sheet
+                }
+                append_todos_to_output(output_sheet, todos, meta)
                 print(f"🧾 Pushed {len(todos)} To-Do item(s) to Output sheet.")
+            elif not todos:
+                print("ℹ️ No To-Do items found in summary; skipping Output sheet append.")
+            elif output_sheet is None:
+                print("⚠️ Output sheet handle is None (bad ID/tab or no access); skipping append.")
         except Exception as e:
             print(f"⚠️ Failed to append To-Dos to Output sheet: {e}")
 
@@ -140,7 +169,7 @@ def process_row(row_idx: int, row_data: list):
     else:
         website_summary_cell = "NA"
 
-    # Write back to the Main sheet
+    # ---------- Write back to the Main sheet ----------
     update_row_values(
         sheet,
         row_idx,
