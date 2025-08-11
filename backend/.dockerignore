@@ -1,0 +1,7 @@
+.git
+.venv
+__pycache__/
+*.pyc
+.env
+config/google_service_account.json
+frontend/.streamlit/
