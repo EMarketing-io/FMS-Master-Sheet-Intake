@@ -2,7 +2,7 @@ from typing import Dict, List
 
 
 def get_client_list(dropdown_ws) -> List[str]:
-    values = dropdown_ws.col_values(6)[:101]
+    values = dropdown_ws.col_values(6)[:110]
     return [v.strip() for v in values if v and v.strip()]
 
 
