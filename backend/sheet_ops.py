@@ -3,7 +3,7 @@ from datetime import datetime
 from pytz import timezone
 import uuid
 import gspread
-
+from config.config import OUTPUT_SHEET_ID
 # The output sheet is expected to have this 17-column header (case-insensitive):
 # 1  Timestamp
 # 2  Task ID
@@ -74,20 +74,6 @@ def append_todos_to_output(
     todos: List[str],
     meta: Dict[str, str],
 ):
-    """
-    Append one row per To-Do into the Output sheet using the 17-column layout.
-    We DO NOT write the 'Status' column per your request.
-
-    Fills:
-      - First 'Timestamp' (created) with current IST
-      - Task ID (8-char hex)
-      - Task Description
-      - Employee Name / Employee Email ID (from meta)
-      - Client Name
-      - Source Link (Meeting Notes link)
-
-    Everything else is left blank.
-    """
     if output_ws is None:
         print("⚠️ Output worksheet handle is None.")
         return
@@ -136,3 +122,23 @@ def append_todos_to_output(
         print(f"✅ Appended {len(rows)} To-Do rows to Output sheet.")
     except Exception as e:
         print(f"❌ Failed to append To-Do rows: {e}")
+
+def append_todos_simple(todos: list):
+    """Append To-Dos into the Output sheet, each in column C (Task Description)."""
+    if not todos:
+        print("ℹ️ No To-Do items to append.")
+        return
+
+    try:
+        gc = gspread.service_account(filename="service_account.json")  # adjust path if needed
+        sh = gc.open_by_key(OUTPUT_SHEET_ID)
+        ws = sh.sheet1  # first sheet/tab
+
+        # Prepare rows: empty cols A, B, D… only C gets filled
+        rows = [["", "", str(todo)] for todo in todos if str(todo).strip()]
+
+        if rows:
+            ws.append_rows(rows, value_input_option="USER_ENTERED")
+            print(f"✅ Appended {len(rows)} To-Do rows into column C of output sheet.")
+    except Exception as e:
+        print(f"❌ Failed to append To-Dos: {e}")

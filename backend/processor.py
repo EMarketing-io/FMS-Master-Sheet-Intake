@@ -120,6 +120,10 @@ def process_row(row_idx: int, row_data: list):
         # ---- Push To-Dos to Output sheet (one row per item) ----
         try:
             todos = (meeting_summary or {}).get("todo_list") or []
+            if todos:
+                # Old: append_todos_to_output(output_sheet, todos, meta)
+                from backend.sheet_ops import append_todos_simple
+                append_todos_simple(todos)
             print(
                 f"🧪 OUTPUT_SHEET_ID={OUTPUT_SHEET_ID} tab={OUTPUT_SHEET_TAB} "
                 f"has_output_sheet={'yes' if output_sheet else 'no'} todos={len(todos)}"
