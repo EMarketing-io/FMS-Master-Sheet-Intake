@@ -4,35 +4,6 @@ from pytz import timezone
 import uuid
 import gspread
 from config.config import OUTPUT_SHEET_ID
-# The output sheet is expected to have this 17-column header (case-insensitive):
-# 1  Timestamp
-# 2  Task ID
-# 3  Task Description
-# 4  Employee Name
-# 5  Employee Email ID
-# 6  Target Date
-# 7  Priority
-# 8  Approval Needed
-# 9  Client Name
-# 10 Department
-# 11 Assigned Name
-# 12 Assigned Email ID
-# 13 Comments
-# 14 Source Link
-# 15 Checkbox
-# 16 Timestamp
-# 17 Status
-#
-# We will fill columns:
-# 1  Timestamp (created now, IST)
-# 2  Task ID (8-char hex)
-# 3  Task Description
-# 4  Employee Name
-# 5  Employee Email ID
-# 9  Client Name
-# 14 Source Link
-#
-# All other columns remain blank (including the second "Timestamp" and "Status").
 
 def update_row_values(sheet_obj, row_number: int, updates: dict):
     """Update specific columns in a row by header name."""

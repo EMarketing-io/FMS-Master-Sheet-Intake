@@ -10,9 +10,9 @@ from config.config import (
     WEBSITE_DRIVE_FOLDER_ID,
     MOM_FOLDER_ID,
     ACTION_POINT_FOLDER_ID,
-    output_sheet,      # Output sheet handle (can be None if not configured)
-    OUTPUT_SHEET_ID,   # For logging
-    OUTPUT_SHEET_TAB,  # For logging
+    output_sheet,
+    OUTPUT_SHEET_ID,  
+    OUTPUT_SHEET_TAB,  
 )
 from backend.audio.transcription import transcribe_audio
 from backend.audio.summarizer import generate_summary
@@ -29,13 +29,6 @@ _HTTP_LINK_RE = re.compile(r"https?://[^\s,]+", re.IGNORECASE)
 
 
 def _parse_audio_links(cell_value: str) -> List[str]:
-    """
-    Accepts:
-      - 'https://.../d/IDa/view, https://.../d/IDb/view'
-      - '(https://... , https://...)' (legacy)
-      - single link
-    Returns a list of URLs.
-    """
     if not cell_value:
         return []
     v = str(cell_value).strip()
@@ -62,21 +55,6 @@ def _gs_hyperlink(url: str, text: str) -> str:
 
 
 def process_row(row_idx: int, row_data: list):
-    """
-    row_data columns used (1-based sheet headers -> 0-based list):
-      [1]=Meeting Date (dd-mm-YYYY)
-      [2]=Client Name
-      [4]=Submitted By (Employee Name)
-      [5]=Email ID (Employee Email)
-      [6]=Meeting Audio Link(s)
-      [7]=Website Link
-
-    Behavior:
-      - If multiple audio links: download all, transcribe all, CONCAT transcripts, summarize ONCE.
-      - Generate exactly ONE set of docs (Meeting Notes, MoM, Action Points).
-      - Push each To-Do from summary to Output sheet as a separate row (Timestamp, Task ID, Task Description,
-        Employee Name/Email, Client Name, Source Link). We do NOT touch the Output sheet's "Status" column.
-    """
     meeting_date = row_data[1]
     client_name = row_data[2]
     employee_name = row_data[4] if len(row_data) > 4 else ""
